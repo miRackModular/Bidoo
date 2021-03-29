@@ -35,13 +35,17 @@ struct HCTIP : Module {
 		config(NUM_PARAMS, NUM_INPUTS, NUM_OUTPUTS, NUM_LIGHTS);
 		configParam(PITCH_PARAM, 0.5f, 2.0f, 1.0f, "Pitch");
 		pShifter = new PitchShifter();
+		pShifter->init(BUFF_SIZE, 8, api0::engineGetSampleRate());
+	}
+
+	virtual void onSampleRateChange() override {
+		delete pShifter;
+
+		pShifter = new PitchShifter();
+		pShifter->init(BUFF_SIZE, 8, api0::engineGetSampleRate());		
 	}
 
 	void process(const ProcessArgs &args) override {
-		if (first) {
-			pShifter->init(BUFF_SIZE, 8, args.sampleRate);
-			first = false;
-		}
 		in_Buffer.push(inputs[INPUT].getVoltage() / 10.0f);
 
 		if (in_Buffer.full()) {

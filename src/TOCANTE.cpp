@@ -108,15 +108,15 @@ void TOCANTE::process(const ProcessArgs &args) {
 	}
 
 	if ((stepsPerSixteenth>0) && ((currentStep % stepsPerSixteenth) == 0)) {
-		gatePulse.trigger(1e-3f);
+		gatePulse.trigger();
 	}
 
 	if ((stepsPerTriplet>0) && ((currentStep % stepsPerTriplet) == 0) && (currentStep <= (stepsPerMeasure-100))) {
-		gatePulse_triplets.trigger(1e-3f);
+		gatePulse_triplets.trigger();
 	}
 
 	if (currentStep == 0) {
-		gatePulse_Measure.trigger(1e-3f);
+		gatePulse_Measure.trigger();
 	}
 
 	pulseEven = gatePulse.process(args.sampleTime);

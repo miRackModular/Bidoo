@@ -388,7 +388,7 @@ struct BORDL : Module {
 	dsp::PulseGenerator stepPulse[8];
 	bool stepOutputsMode = false;
 	bool gateOn = false;
-	const float invLightLambda = 13.333333333333333333333f;
+	const float invLightLambda = 3.333333333333333333333f;
 	bool copyState = false;
 
 	PatternExtended patterns[16];
@@ -400,7 +400,7 @@ struct BORDL : Module {
 		configParam(RESET_PARAM, 0.0f, 1.0f, 0.0f);
 		configParam(STEPS_PARAM, 1.0f, 16.0f, 8.0f);
 		configParam(ROOT_NOTE_PARAM, 0.0f, BORDL::NUM_NOTES-1.0f, 0.0f);
-		configParam(SCALE_PARAM, 0.0f, BORDL::NUM_SCALES-1.0f, 0.0f);
+		configParam(SCALE_PARAM, 0.0f, BORDL::NUM_SCALES-1.0f, CHROMATIC);
 		configParam(GATE_TIME_PARAM, 0.1f, 1.0f, 0.5f);
 		configParam(SLIDE_TIME_PARAM	, 0.1f, 1.0f, 0.2f);
 		configParam(PLAY_MODE_PARAM, 0.0f, 4.0f, 0.0f);
@@ -415,7 +415,7 @@ struct BORDL : Module {
 		configParam(DOWN_PARAM, 0.0f, 1.0f, 0.0f);
 
 		for (int i = 0; i < 8; i++) {
-			configParam(TRIG_PITCH_PARAM + i, -4.0f, 6.0f, 0.0f);
+			configParam(TRIG_PITCH_PARAM + i, -4.0f, 4.0f, 0.0f);
 			configParam(TRIG_PITCHRND_PARAM + i, 0.0f, 1.0f, 0.0f);
 			configParam(TRIG_ACCENT_PARAM + i, 0.0f, 10.0f, 0.0f);
 			configParam(TRIG_RNDACCENT_PARAM + i, 0.0f, 1.0f, 0.0f);
@@ -605,7 +605,7 @@ struct BORDL : Module {
 	void randomizePitch() {
 		random::init();
 		for (int i = 0; i < 8; i++) {
-			params[TRIG_PITCH_PARAM+i].setValue(random::uniform()*10.0f-4.0f);
+			params[TRIG_PITCH_PARAM+i].setValue(random::uniform()*8.0f-4.0f);
 		}
 	}
 
@@ -923,17 +923,18 @@ void BORDL::process(const ProcessArgs &args) {
 		rndPitch = index != prevIndex ? rescale(random::uniform(),0.0f,1.0f,patterns[playedPattern].CurrentStep().pitchRnd * -5.0f, patterns[playedPattern].CurrentStep().pitchRnd * 5.0f) : rndPitch;
 		accent = index != prevIndex ? clamp(patterns[playedPattern].CurrentStep().accent + rescale(random::uniform(),0.0f,1.0f,patterns[playedPattern].CurrentStep().accentRnd * -5.0f,patterns[playedPattern].CurrentStep().accentRnd * 5.0f),0.0f,10.0f)  : accent;
 
-		lights[STEPS_LIGHTS+patterns[playedPattern].CurrentStep().index].setBrightness(1.0f);
+		int step = patterns[playedPattern].CurrentStep().index;
+		for (int i = 0; i < 8; i++) {
+			float v = (step == i ? 1. : 0.);
+			lights[SLIDES_LIGHTS + i].setBrightness(slideState[i] == 't' ? 1.0f - v : v);
+			lights[SKIPS_LIGHTS + i].setBrightness(skipState[i] == 't' ? 1.0f - v : v);
+		}
 	}
 
 	// Lights & steps outputs
-	for (int i = 0; i < 8; i++) {
-		lights[STEPS_LIGHTS + i].setBrightness(lights[STEPS_LIGHTS + i].getBrightness() - lights[STEPS_LIGHTS + i].getBrightness() * invLightLambda * invESR);
-		lights[SLIDES_LIGHTS + i].setBrightness(slideState[i] == 't' ? 1.0f - lights[STEPS_LIGHTS + i].getBrightness() : lights[STEPS_LIGHTS + i].getBrightness());
-		lights[SKIPS_LIGHTS + i].setBrightness(skipState[i] == 't' ? 1.0f - lights[STEPS_LIGHTS + i].getBrightness() : lights[STEPS_LIGHTS + i].getBrightness());
-
+	for (int i = 0; i < 8; i++)
 		outputs[STEP_OUTPUT+i].setVoltage(stepPulse[i].process(invESR) ? 10.0f : 0.0f);
-	}
+
 	lights[RESET_LIGHT].setBrightness(lights[RESET_LIGHT].getBrightness() - lights[RESET_LIGHT].getBrightness() * invLightLambda * invESR);
 	lights[COPY_LIGHT].setBrightness(copyPattern >= 0 ? 1 : 0);
 
@@ -1310,6 +1311,7 @@ struct BORDLWidget : ModuleWidget {
 
 		for (int i = 0; i < 8; i++) {
 			pitchParams[i] = createParam<BidooBlueKnob>(Vec(portX1[i]+1.0f, 56.0f), module, BORDL::TRIG_PITCH_PARAM + i);
+			static_cast<BidooBlueKnob*>(pitchParams[i])->speed = 0.5;
 			addParam(pitchParams[i]);
 			pitchRndParams[i] = createParam<BidooBlueTrimpot>(Vec(portX1[i]+27.0f, 81.0f), module, BORDL::TRIG_PITCHRND_PARAM + i);
 			addParam(pitchRndParams[i]);

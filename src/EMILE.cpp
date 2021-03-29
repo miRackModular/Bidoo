@@ -46,6 +46,7 @@ struct EMILE : Module {
   FftSynth *synth;
 	std::string lastPath;
 	bool loading = false;
+	int sampleToken = 0;
 	std::vector<unsigned char> image;
   unsigned width = 0;
 	unsigned height = 0;
@@ -109,6 +110,7 @@ void EMILE::loadSample(std::string path) {
     samplePos = 0;
   }
 	loading = false;
+	sampleToken++;	
 }
 
 void EMILE::process(const ProcessArgs &args) {
@@ -156,26 +158,35 @@ void EMILE::process(const ProcessArgs &args) {
 	}
 }
 
-struct EMILEDisplay : OpaqueWidget {
+struct EMILEDisplay : TransparentWidget {
 	EMILE *module;
-	shared_ptr<Font> font;
 	const float width = 125.0f;
 	const float height = 130.0f;
-	std::string path = "";
-	bool first = true;
 	int img = 0;
+	int sampleToken = 0;
 
 	EMILEDisplay() {
-		font = APP->window->loadFont(asset::plugin(pluginInstance, "res/DejaVuSansMono.ttf"));
+		canSquash = true;
+	}
+
+	~EMILEDisplay() {
+		if (img)
+			nvgDeleteImage(api0::gVg, img);
+	}
+
+	void step() override {
+		if (sampleToken != module->sampleToken)
+		{
+			sampleToken = module->sampleToken;
+			if (img)
+				nvgDeleteImage(api0::gVg, img);
+			img = nvgCreateImage(api0::gVg, module->lastPath.c_str(), 0);;
+			dirty = true;
+		}
 	}
 
 	void draw(const DrawArgs &args) override {
-		if (module && !module->loading) {
-			if (path != module->lastPath) {
-				img = nvgCreateImage(args.vg, module->lastPath.c_str(), 0);
-				path = module->lastPath;
-			}
-
+		if (img) {
 			nvgBeginPath(args.vg);
 			if (module->width>0 && module->height>0)
 				nvgScale(args.vg, width/module->width, height/module->height);
@@ -188,9 +199,8 @@ struct EMILEDisplay : OpaqueWidget {
 	}
 };
 
-struct EMILEPositionDisplay : OpaqueWidget {
+struct EMILEPositionDisplay : TransparentWidget {
 	EMILE *module;
-	shared_ptr<Font> font;
 	const float width = 125.0f;
 	const float height = 130.0f;
 	std::string path = "";
@@ -198,7 +208,6 @@ struct EMILEPositionDisplay : OpaqueWidget {
 	int img = 0;
 
 	EMILEPositionDisplay() {
-		font = APP->window->loadFont(asset::plugin(pluginInstance, "res/DejaVuSansMono.ttf"));
 	}
 
 	void draw(const DrawArgs &args) override {

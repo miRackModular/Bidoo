@@ -319,17 +319,17 @@ struct CLACOS : Module {
 struct CLACOSDisplay : TransparentWidget {
 	CLACOS *module;
 	int frame = 0;
-	std::string waveForm;
 	int segmentNumber = 0;
 	float initX = 0.0f;
 	float initY = 0.0f;
 	float dragX = 0.0f;
 	float dragY = 0.0f;
 
-	CLACOSDisplay() {}
+	CLACOSDisplay() {
+		canCache = true;
+	}
 
 	void onDragStart(const event::DragStart &e) override {
-
 		dragX = APP->scene->rack->mousePos.x;
 		dragY = APP->scene->rack->mousePos.y;
 	}
@@ -340,6 +340,7 @@ struct CLACOSDisplay : TransparentWidget {
 			float newDragY = APP->scene->rack->mousePos.y;
 			module->phaseDistX[segmentNumber] = rescale(clamp(initX + (newDragX - dragX), 0.0f, 70.0f), 0.0f, 70.0f, 0.01f, 0.99f);
 			module->phaseDistY[segmentNumber] = rescale(clamp(initY - (newDragY - dragY), 0.0f, 70.0f), 0.0f, 70.0f, 0.01f, 0.99f);
+			dirty = true;
 		}
 	}
 
@@ -352,21 +353,20 @@ struct CLACOSDisplay : TransparentWidget {
 		}
 	}
 
-	void draw(const DrawArgs &args) override {
-		if (++frame >= 4) {
-			frame = 0;
-			if (module->waveFormIndex[segmentNumber] == 0)
-				waveForm = "SIN";
-			else if (module->waveFormIndex[segmentNumber] == 1)
-				waveForm = "TRI";
-			else if (module->waveFormIndex[segmentNumber] == 2)
-				waveForm = "SAW";
-			else if (module->waveFormIndex[segmentNumber] == 3)
-				waveForm = "SQR";
+	int waveformIndex = -1;
+	const char *waveformNames[4] = { "SIN", "TRI", "SAW", "SQR" };
+	void step() override {
+		if (waveformIndex != module->waveFormIndex[segmentNumber])
+		{
+			waveformIndex = module->waveFormIndex[segmentNumber];
+			dirty = true;
 		}
+	}
+
+	void draw(const DrawArgs &args) override {
 		nvgFontSize(args.vg, 10.0f);
 		nvgFillColor(args.vg, nvgRGBA(42, 87, 117, 255));
-		nvgText(args.vg, 12.0f, 79.0f, waveForm.c_str(), NULL);
+		nvgText(args.vg, 12.0f, 79.0f, waveformNames[waveformIndex], NULL);
 
 		// Draw ref lines
 		nvgStrokeColor(args.vg, nvgRGBA(0xff, 0xff, 0xff, 0x80));
@@ -414,7 +414,7 @@ struct CLACOSWidget : ModuleWidget {
 					display->module = module;
 					display->segmentNumber = i;
 					display->box.pos = Vec(3.0f + 74.0f * (i % 2), 113.0f + 102.0f * std::round(i / 2));//std::round??
-					display->box.size = Vec(70.0f, 70.0f);
+					display->box.size = Vec(70.0f, 79.0f);
 					addChild(display);
 					addParam(createParam<BidooBlueTrimpot>(Vec(2.0f + 74.0f * (i % 2), 194.0f + 102.0f * std::round(i / 2)), module, CLACOS::WAVEFORM_PARAM + i));
 					addInput(createInput<TinyPJ301MPort>(Vec(22.0f + 74.0f * (i % 2), 196.0f + 102.0f * std::round(i / 2)), module, CLACOS::WAVEFORM_INPUT + i));

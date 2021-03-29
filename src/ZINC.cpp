@@ -93,10 +93,9 @@ struct ZINC : Module {
 
 struct ZINCDisplay : TransparentWidget {
 	ZINC *module;
-	std::shared_ptr<Font> font;
 
 	ZINCDisplay() {
-		font = APP->window->loadFont(asset::plugin(pluginInstance, "res/DejaVuSansMono.ttf"));
+		canSquash = true;
 	}
 
 	void draw(NVGcontext *vg) override {
@@ -155,16 +154,6 @@ struct ZINCWidget : ModuleWidget {
 		addInput(createInput<PJ301MPort>(Vec(85.f, 330), module, ZINC::IN_CARR));
 		addOutput(createOutput<PJ301MPort>(Vec(163.5f, 330), module, ZINC::OUT));
 	}
-
-	void step() override;
 };
-
-void ZINCWidget::step() {
-	for (int i = 0; i < BANDS; i++) {
-			BidooziNCColoredKnob* knob = dynamic_cast<BidooziNCColoredKnob*>(controls[i]);
-			if (knob->paramQuantity) knob->dirtyValue=knob->paramQuantity->getValue()-0.1f;
-	}
-	ModuleWidget::step();
-}
 
 Model *modelZINC = createModel<ZINC, ZINCWidget>("ziNC");

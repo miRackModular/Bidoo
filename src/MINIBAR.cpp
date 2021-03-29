@@ -364,15 +364,24 @@ struct MicrobarTrimpotWithDisplay : BidooBlueTrimpot {
 	const char *header = NULL;
 	const char *tail = NULL;
 
-	void onEnter(const event::Enter &e) override {
+	void onDragStart(const event::DragStart &e) override {
 		if (lblDisplay && valueForDisplay && format && tail) {
 			lblDisplay->value = valueForDisplay;
 			lblDisplay->format = format;
 			lblDisplay->tail = tail;
 		}
 		if (lblDisplay && header) lblDisplay->header = header;
-		BidooBlueTrimpot::onEnter(e);
+		BidooBlueTrimpot::onDragStart(e);
 	}
+
+	void onDragEnd(const event::DragEnd& e) override {
+		if (lblDisplay) {
+			lblDisplay->value = NULL;
+			lblDisplay->format = NULL;
+			lblDisplay->header = NULL;
+		}
+		BidooBlueTrimpot::onDragEnd(e);
+	}	
 };
 
 struct MINIBARWidget : ModuleWidget {

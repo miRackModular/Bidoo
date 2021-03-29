@@ -153,30 +153,32 @@ struct MOIREWidget : ModuleWidget {
 };
 
 struct MOIRECKD6 : BlueCKD6 {
-	void onButton(const event::Button &e) override {
-		MOIREWidget *parent = dynamic_cast<MOIREWidget*>(this->parent);
-		MOIRE *module = dynamic_cast<MOIRE*>(this->paramQuantity->module);
+	void onDragStart(const event::DragStart &e) override {
+		MOIREWidget *parent = getAncestorOfType<MOIREWidget>();
+		MOIRE *module = dynamic_cast<MOIRE*>(this->module);
 		if (parent && module) {
-			if (this->paramQuantity->paramId == MOIRE::ADONF_PARAM) {
-				parent->morphButton->paramQuantity->setValue(10.0f);
+			if (this->paramId == MOIRE::ADONF_PARAM) {
+				parent->morphButton->setValue(10.0f);
+				printf("-> %d\n",module->targetScene);
 				for (int i = 0; i<16; i++){
-					parent->controls[i]->paramQuantity->setValue(module->scenes[module->targetScene][i]);
+					parent->controls[i]->setValue(module->scenes[module->targetScene][i]);
 					module->controlFocused[i] = false;
 				}
-			} else if (this->paramQuantity->paramId == MOIRE::NADA_PARAM) {
-				parent->morphButton->paramQuantity->setValue(0.0f);
+			} else if (this->paramId == MOIRE::NADA_PARAM) {
+				printf("-> %d\n",module->currentScene);
+				parent->morphButton->setValue(0.0f);
 				for (int i = 0; i<16; i++){
-					parent->controls[i]->paramQuantity->setValue(module->scenes[module->currentScene][i]);
+					parent->controls[i]->setValue(module->scenes[module->currentScene][i]);
 					module->controlFocused[i] = false;
 				}
 			}
-			else if (this->paramQuantity->paramId == MOIRE::SAVE_PARAM) {
+			else if (this->paramId == MOIRE::SAVE_PARAM) {
 				for (int i = 0 ; i < 16; i++) {
-					module->scenes[module->targetScene][i] = parent->controls[i]->paramQuantity->getValue();
+					module->scenes[module->targetScene][i] = parent->controls[i]->getValue();
 				}
 			}
 		}
-		BlueCKD6::onButton(e);
+		BlueCKD6::onDragStart(e);
 	}
 };
 
@@ -207,27 +209,27 @@ struct MOIREDisplay : TransparentWidget {
 };
 
 struct MOIREColoredKnob : BidooColoredKnob {
-	void setValueNoEngine(float value) {
-		float newValue = clamp(value, fminf(this->paramQuantity->getMinValue(), this->paramQuantity->getMaxValue()), fmaxf(this->paramQuantity->getMinValue(), this->paramQuantity->getMaxValue()));
-		if (this->paramQuantity->getValue() != newValue) {
-			this->paramQuantity->setValue(newValue);
-		}
-	};
+	// void setValueNoEngine(float value) {
+	// 	float newValue = clamp(value, fminf(this->paramQuantity->getMinValue(), this->paramQuantity->getMaxValue()), fmaxf(this->paramQuantity->getMinValue(), this->paramQuantity->getMaxValue()));
+	// 	if (this->paramQuantity->getValue() != newValue) {
+	// 		this->paramQuantity->setValue(newValue);
+	// 	}
+	// };
 
 	void onDragStart(const event::DragStart &e) override {
 		RoundKnob::onDragStart(e);
-		MOIRE *module = dynamic_cast<MOIRE*>(this->paramQuantity->module);
-		module->controlFocused[this->paramQuantity->paramId - MOIRE::MOIRE::CONTROLS_PARAMS] = true;
+		MOIRE *module = dynamic_cast<MOIRE*>(this->module);
+		module->controlFocused[this->paramId - MOIRE::MOIRE::CONTROLS_PARAMS] = true;
 	}
 };
 
 struct MOIREMorphKnob : BidooMorphKnob {
-	void onButton(const event::Button &e) override {
-			MOIRE *module = dynamic_cast<MOIRE*>(this->paramQuantity->module);
+	void onMouseDown(const event::MouseDown &e) override {
+			MOIRE *module = dynamic_cast<MOIRE*>(this->module);
 			for (int i = 0 ; i < 16; i++) {
 				module->controlFocused[i] = false;
 			}
-			BidooMorphKnob::onButton(e);
+			BidooMorphKnob::onMouseDown(e);
 		}
 };
 
@@ -273,7 +275,7 @@ MOIREWidget::MOIREWidget(MOIRE *module) {
 
 	for (int i = 0; i < 16; i++) {
 		controls[i] = createParam<MOIREColoredKnob>(Vec(portX0[i%4+5]+1, portY0[int(i/4) + 2] + 2), module, MOIRE::CONTROLS_PARAMS + i);
-		addParam(controls[i]);
+		addParam(controls[i], false);
 		addParam(createParam<MiniLEDButton>(Vec(portX0[i%4+5]+24, portY0[int(i/4) + 2]+24), module, MOIRE::TYPE_PARAMS + i));
 		addChild(createLight<SmallLight<RedLight>>(Vec(portX0[i%4+5]+24, portY0[int(i/4) + 2]+25), module, MOIRE::TYPE_LIGHTS + i));
 		addOutput(createOutput<PJ301MPort>(Vec(portX0[i%4+5]+2, portY0[int(i/4) + 7]), module, MOIRE::CV_OUTPUTS + i));
@@ -285,7 +287,8 @@ void MOIREWidget::step() {
 	for (int i = 0; i < 16; i++) {
 		if (module && !module->controlFocused[i]){
 			MOIREColoredKnob* knob = dynamic_cast<MOIREColoredKnob*>(controls[i]);
-      knob->paramQuantity->setValue(module->currentValues[i]);
+			if (knob->value != module->currentValues[i])
+				knob->setValue(module->currentValues[i]);
 		}
 	}
 	ModuleWidget::step();

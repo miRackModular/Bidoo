@@ -347,7 +347,7 @@ struct DTROY : Module {
 	dsp::PulseGenerator stepPulse[8];
 	bool stepOutputsMode = false;
 	bool gateOn = false;
-	const float invLightLambda = 13.333333333333333333333f;
+	const float invLightLambda = 3.333333333333333333333f;
 	bool copyState = false;
 
 	Pattern patterns[16];
@@ -828,16 +828,18 @@ void DTROY::process(const ProcessArgs &args) {
 		if (((!stepOutputsMode) && (pulse == 0)) || (stepOutputsMode))
 			stepPulse[patterns[playedPattern].CurrentStep().index].trigger(10 * invESR);
 
-		lights[STEPS_LIGHTS+patterns[playedPattern].CurrentStep().index].setBrightness(1.0f);
+		int step = patterns[playedPattern].CurrentStep().index;
+		for (int i = 0; i < 8; i++) {
+			float v = (step == i ? 1. : 0.);
+			lights[SLIDES_LIGHTS + i].setBrightness(slideState[i] == 't' ? 1.0f - v : v);
+			lights[SKIPS_LIGHTS + i].setBrightness(skipState[i] == 't' ? 1.0f - v : v);
+		}
 	}
 
 	// Lights & steps outputs
-	for (int i = 0; i < 8; i++) {
-		lights[STEPS_LIGHTS + i].setBrightness(lights[STEPS_LIGHTS + i].getBrightness() - lights[STEPS_LIGHTS + i].getBrightness() * invLightLambda * invESR);
-		lights[SLIDES_LIGHTS + i].setBrightness(slideState[i] == 't' ? 1.0f - lights[STEPS_LIGHTS + i].getBrightness() : lights[STEPS_LIGHTS + i].getBrightness());
-		lights[SKIPS_LIGHTS + i].setBrightness(skipState[i]== 't' ? 1.0f - lights[STEPS_LIGHTS + i].getBrightness() : lights[STEPS_LIGHTS + i].getBrightness());
+	for (int i = 0; i < 8; i++)
 		outputs[STEP_OUTPUT+i].setVoltage(stepPulse[i].process(invESR) ? 10.0f : 0.0f);
-	}
+
 	lights[RESET_LIGHT].setBrightness(lights[RESET_LIGHT].getBrightness() -  lights[RESET_LIGHT].getBrightness() * invLightLambda * invESR);
 	lights[COPY_LIGHT].setBrightness(copyPattern >= 0 ? 1 : 0);
 
@@ -1127,9 +1129,9 @@ void DTROYWidget::appendContextMenu(ui::Menu *menu) {
 	assert(module);
 
 	menu->addChild(construct<MenuLabel>());
-	menu->addChild(construct<DTROYRandPitchItem>(&MenuItem::text, "Rand pitch", &DTROYRandPitchItem::module, module));
-	menu->addChild(construct<DTROYRandGatesItem>(&MenuItem::text, "Rand gates", &DTROYRandGatesItem::module, module));
-	menu->addChild(construct<DTROYRandSlideSkipItem>(&MenuItem::text, "Rand slides & skips", &DTROYRandSlideSkipItem::module, module));
+	menu->addChild(construct<DTROYRandPitchItem>(&MenuItem::text, "Randomize pitch", &DTROYRandPitchItem::module, module));
+	menu->addChild(construct<DTROYRandGatesItem>(&MenuItem::text, "Randomize gates", &DTROYRandGatesItem::module, module));
+	menu->addChild(construct<DTROYRandSlideSkipItem>(&MenuItem::text, "Randomize slides & skips", &DTROYRandSlideSkipItem::module, module));
 	menu->addChild(construct<DTROYStepOutputsModeItem>(&MenuItem::text, "Step outputs mode", &DTROYStepOutputsModeItem::module, module));
 }
 

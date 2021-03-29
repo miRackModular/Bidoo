@@ -64,18 +64,21 @@ struct REI : Module {
 		configParam(CLIPPING_PARAM, 0.f, 1.f, 1.f, "Clipping");//Unsure which is on/off
 
 		pShifter = new PitchShifter();
+		pShifter->init(REIBUFF_SIZE, 8, api0::engineGetSampleRate());
 	}
 
 	~REI() {
 		delete pShifter;
 	}
 
-	void process(const ProcessArgs &args) override {
-		if (first) {
-			pShifter->init(REIBUFF_SIZE, 8, args.sampleRate);
-			first = false;
-		}
+	virtual void onSampleRateChange() override {
+		delete pShifter;
+		
+		pShifter = new PitchShifter();
+		pShifter->init(REIBUFF_SIZE, 8, api0::engineGetSampleRate());		
+	}
 
+	void process(const ProcessArgs &args) override {
 		float outL = 0.0f, outR = 0.0f;
 		float wOutL = 0.0f, wOutR = 0.0f;
 		float inL = 0.0f, inR = 0.0f;

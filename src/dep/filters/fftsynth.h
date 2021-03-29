@@ -54,7 +54,7 @@ struct FftSynth {
 		memset(gFFTworksp, 0, 2*fftFrameSize*sizeof(float));
 		memset(gFFTworkspOut, 0, 2*fftFrameSize*sizeof(float));
 
-		for (k = 0; k <= fftFrameSize2; k++) {
+		for (k = 0; k < fftFrameSize2; k++) {
 			/* get real and imag part and re-interleave */
 			gFFTworksp[2*k] = magn[k]*cos(phase[k]);
 			gFFTworksp[2*k+1] = magn[k]*sin(phase[k]);

@@ -235,7 +235,7 @@ struct TIARE : Module {
 		setPitch(params[PITCH_PARAM].getValue(), pitchFine + pitchCv, freqFactor);
 		syncEnabled = inputs[SYNC_INPUT].isConnected();
 
-		process(1.0f / args.sampleRate, inputs[SYNC_INPUT].getVoltage());
+		process(args.sampleTime, inputs[SYNC_INPUT].getVoltage());
 
 		// Set output
 		if (outputs[SIN_OUTPUT].isConnected())
@@ -297,7 +297,9 @@ struct TIAREDisplay : TransparentWidget {
 	float dragX = 0.0f;
 	float dragY = 0.0f;
 
-	TIAREDisplay() {}
+	TIAREDisplay() {
+		canCache = true;
+	}
 
 	void onDragStart(const event::DragStart &e) override {
 		dragX = APP->scene->rack->mousePos.x;
@@ -313,6 +315,7 @@ struct TIAREDisplay : TransparentWidget {
 			float newDragY = APP->scene->rack->mousePos.y;
 			module->phaseDistY = rescale(clamp(initY - (newDragY - dragY), 0.0f, 140.0f), 0.0f, 140.0f, 0.01f, 1.0f);
 		}
+		dirty = true;
 	}
 
 	void onButton(const event::Button &e) override {
@@ -402,8 +405,8 @@ struct TIAREWidget : ModuleWidget {
 	void appendContextMenu(Menu *menu) override {
 		menu->addChild(new MenuEntry);
 		moduleModeItem *modeItem = new moduleModeItem;
-		modeItem->text = "Mode: ";
-		modeItem->rightText = dynamic_cast<TIARE*>(this->module)->freqFactor == 1 ? "OSC✔ LFO" : "OSC  LFO✔";
+		modeItem->text = "Mode:  ";
+		modeItem->text += dynamic_cast<TIARE*>(this->module)->freqFactor == 1 ? "OSC✔ LFO" : "OSC  LFO✔";
 		modeItem->module = dynamic_cast<TIARE*>(this->module);
 		menu->addChild(modeItem);
 	}

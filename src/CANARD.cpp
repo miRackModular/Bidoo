@@ -59,6 +59,7 @@ struct CANARD : Module {
 	int channels = 2;
 	int sampleRate = 0;
   int totalSampleCount = 0;
+  	int sampleToken = 0;
 	vector<dsp::Frame<2>> playBuffer, recordBuffer;
 	float samplePos = 0.0f, sampleStart = 0.0f, loopLength = 0.0f, fadeLenght = 0.0f, fadeCoeff = 1.0f, speedFactor = 1.0f;
 	size_t prevPlayedSlice = 0;
@@ -184,6 +185,8 @@ void CANARD::calcTransients() {
 		i+=size;
 		prevNrgy = nrgy;
 	}
+
+	sampleToken++;
 }
 
 void CANARD::loadSample() {
@@ -193,6 +196,7 @@ void CANARD::loadSample() {
 	mylock.unlock();
 	slices.clear();
 	loading = false;
+	sampleToken++;
 }
 
 void CANARD::saveSample() {
@@ -259,6 +263,7 @@ void CANARD::process(const ProcessArgs &args) {
 		lastPath = "";
 		waveFileName = "";
 		waveExtension = "";
+		sampleToken++;
 	}
 
 	if ((selected>=0) && (deleteFlag)) {
@@ -284,6 +289,7 @@ void CANARD::process(const ProcessArgs &args) {
 		selected = -1;
 		deleteFlag = false;
 		calcLoop();
+		sampleToken++;
 	}
 
 	if ((addSliceMarker>=0) && (addSliceMarkerFlag)) {
@@ -299,6 +305,7 @@ void CANARD::process(const ProcessArgs &args) {
 			addSliceMarker = -1;
 			addSliceMarkerFlag = false;
 			calcLoop();
+			sampleToken++;
 		}
 	}
 
@@ -310,6 +317,7 @@ void CANARD::process(const ProcessArgs &args) {
 			deleteSliceMarker = -1;
 			deleteSliceMarkerFlag = false;
 			calcLoop();
+			sampleToken++;
 		}
 	}
 
@@ -338,22 +346,19 @@ void CANARD::process(const ProcessArgs &args) {
 				totalSampleCount = playBuffer.size();
 				mylock.unlock();
 			}
-			mylock.lock();
 			recordBuffer.resize(0);
-			mylock.unlock();
 			lights[REC_LIGHT].setBrightness(0.0f);
+			sampleToken++;
 		}
 		record = !record;
 	}
 
 	if (record) {
 		lights[REC_LIGHT].setBrightness(10.0f);
-		mylock.lock();
 		dsp::Frame<2> frame;
 		frame.samples[0] = inputs[INL_INPUT].getVoltage()/10.0f;
 		frame.samples[1] = inputs[INR_INPUT].getVoltage()/10.0f;
 		recordBuffer.push_back(frame);
-		mylock.unlock();
 	}
 
 	int trigMode = inputs[TRIG_INPUT].isConnected() ? 1 : (inputs[GATE_INPUT].isConnected() ? 2 : 0);
@@ -479,17 +484,16 @@ void CANARD::process(const ProcessArgs &args) {
 }
 
 struct BidooTransientsBlueTrimpot : BidooBlueTrimpot {
-	CANARD *module;
+	// CANARD *module;
 
-	void onButton(const event::Button &e) override {
-		if (e.action == GLFW_PRESS && e.button == GLFW_MOUSE_BUTTON_LEFT && (e.mods & RACK_MOD_MASK) == (GLFW_MOD_SHIFT)) {
-			module->calcTransients();
-		}
-		BidooBlueTrimpot::onButton(e);
-	}
+	// void onDragStart(const event::DragStart &e) override {
+	// 	if (api0::windowIsShiftPressed())
+	// 		dynamic_cast<CANARD*>(module)->calcTransients();
+	// 	BidooBlueTrimpot::onDragStart(e);
+	// }
 };
 
-struct CANARDDisplay : OpaqueWidget {
+struct CANARDDisplay : TransparentWidget {
 	CANARD *module;
 	shared_ptr<Font> font;
 	const float width = 175.0f;
@@ -500,83 +504,23 @@ struct CANARDDisplay : OpaqueWidget {
 	float refX = 0.0f;
 
 	CANARDDisplay() {
-		font = APP->window->loadFont(asset::plugin(pluginInstance, "res/DejaVuSansMono.ttf"));
+		canCache = true;
 	}
 
-	void onButton(const event::Button &e) override {
-		if (module->slices.size()>0) {
-			refX = e.pos.x;
-			refIdx = ((e.pos.x - zoomLeftAnchor)/zoomWidth)*(float)module->totalSampleCount;
-			module->addSliceMarker = refIdx;
-			auto lower = std::lower_bound(module->slices.begin(), module->slices.end(), refIdx);
-			module->selected = distance(module->slices.begin(),lower-1);
-			module->deleteSliceMarker = *(lower-1);
+	int sampleToken = 0;
+	void step() override {
+		if (sampleToken != module->sampleToken)
+		{
+			sampleToken = module->sampleToken;
+			dirty = true;
 		}
-		if (e.button == 0)
-			OpaqueWidget::onButton(e);
-		else {
-			if (e.action == GLFW_PRESS && e.button == GLFW_MOUSE_BUTTON_RIGHT && (e.mods & RACK_MOD_MASK) == (GLFW_MOD_SHIFT)) {
-				ModuleWidget *pWidget = dynamic_cast<ModuleWidget*>(this->parent);
-				pWidget->createContextMenu();
-				e.consume(this);
-			}
-		}
-	}
-
-	void onDragStart(const event::DragStart &e) override {
-		appGet()->window->cursorLock();
-		OpaqueWidget::onDragStart(e);
-	}
-
-	void onDragMove(const event::DragMove &e) override {
-		float zoom = 1.0f;
-		if (e.mouseDelta.y > 0.0f) {
-			zoom = 1.0f/(((appGet()->window->getMods() & RACK_MOD_MASK) == (GLFW_MOD_SHIFT)) ? 2.0f : 1.1f);
-		}
-		else if (e.mouseDelta.y < 0.0f) {
-			zoom = ((appGet()->window->getMods() & RACK_MOD_MASK) == (GLFW_MOD_SHIFT)) ? 2.0f : 1.1f;
-		}
-		zoomWidth = clamp(zoomWidth*zoom,width,zoomWidth*((appGet()->window->getMods() & RACK_MOD_MASK) == (GLFW_MOD_SHIFT) ? 2.0f : 1.1f));
-		zoomLeftAnchor = clamp(refX - (refX - zoomLeftAnchor)*zoom + e.mouseDelta.x, width - zoomWidth,0.0f);
-		OpaqueWidget::onDragMove(e);
-	}
-
-	void onDragEnd(const event::DragEnd &e) override {
-		appGet()->window->cursorUnlock();
-		OpaqueWidget::onDragEnd(e);
 	}
 
 	void draw(const DrawArgs &args) override {
 		if (module && (module->playBuffer.size()>0)) {
 			module->mylock.lock();
-			std::vector<float> vL;
-  		std::vector<float> vR;
-			for (int i=0;i<module->totalSampleCount;i++) {
-				vL.push_back(module->playBuffer[i].samples[0]);
-				vR.push_back(module->playBuffer[i].samples[1]);
-			}
 			std::vector<int> s(module->slices);
-			module->mylock.unlock();
-			size_t nbSample = vL.size();
-
-			// Draw play line
-			if (!module->loading) {
-				nvgStrokeColor(args.vg, LIGHTBLUE_BIDOO);
-				{
-					nvgBeginPath(args.vg);
-					nvgStrokeWidth(args.vg, 2);
-					if (nbSample>0) {
-						nvgMoveTo(args.vg, module->samplePos * zoomWidth / nbSample + zoomLeftAnchor, 0);
-						nvgLineTo(args.vg, module->samplePos * zoomWidth / nbSample + zoomLeftAnchor, 2*height+10);
-					}
-					else {
-						nvgMoveTo(args.vg, 0, 0);
-						nvgLineTo(args.vg, 0, 2*height+10);
-					}
-					nvgClosePath(args.vg);
-				}
-				nvgStroke(args.vg);
-			}
+			size_t nbSample = module->totalSampleCount;
 
 			// Draw ref line
 			nvgStrokeColor(args.vg, nvgRGBA(0xff, 0xff, 0xff, 0x30));
@@ -599,53 +543,18 @@ struct CANARDDisplay : OpaqueWidget {
 			}
 			nvgStroke(args.vg);
 
-			if ((!module->loading) && (vL.size()>0)) {
-				// Draw loop
-				nvgFillColor(args.vg, nvgRGBA(255, 255, 255, 60));
-				nvgStrokeWidth(args.vg, 1);
-				{
-					nvgBeginPath(args.vg);
-					nvgMoveTo(args.vg, (module->sampleStart + module->fadeLenght) * zoomWidth / nbSample + zoomLeftAnchor, 0);
-					nvgLineTo(args.vg, module->sampleStart * zoomWidth / vL.size() + zoomLeftAnchor, 2*height+10);
-					nvgLineTo(args.vg, (module->sampleStart + module->loopLength) * zoomWidth / nbSample + zoomLeftAnchor, 2*height+10);
-					nvgLineTo(args.vg, (module->sampleStart + module->loopLength - module->fadeLenght) * zoomWidth / nbSample + zoomLeftAnchor, 0);
-					nvgLineTo(args.vg, (module->sampleStart + module->fadeLenght) * zoomWidth / nbSample + zoomLeftAnchor, 0);
-					nvgClosePath(args.vg);
-				}
-				nvgFill(args.vg);
-
-				//draw selected
-				if ((module->selected >= 0) && ((size_t)module->selected < s.size()) && (floor(module->params[CANARD::MODE_PARAM].getValue()) == 1)) {
-					nvgStrokeColor(args.vg, RED_BIDOO);
-					{
-						nvgScissor(args.vg, 0, 0, width, 2*height+10);
-						nvgBeginPath(args.vg);
-						nvgStrokeWidth(args.vg, 4);
-						nvgMoveTo(args.vg, (s[module->selected] * zoomWidth / nbSample) + zoomLeftAnchor , 2*height+9);
-						if ((size_t)module->selected < (s.size()-1))
-							nvgLineTo(args.vg, (s[module->selected+1] * zoomWidth / nbSample) + zoomLeftAnchor , 2*height+9);
-						else
-							nvgLineTo(args.vg, zoomWidth + zoomLeftAnchor, 2*height+9);
-						nvgClosePath(args.vg);
-					}
-					nvgStroke(args.vg);
-					nvgResetScissor(args.vg);
-				}
-
-				// Draw waveform
-
-				if (nbSample>0) {
+			// Draw waveform
+			if ((!module->loading) && (nbSample>0)) {
 				nvgStrokeColor(args.vg, PINK_BIDOO);
-				nvgSave(args.vg);
 				Rect b = Rect(Vec(zoomLeftAnchor, 0), Vec(zoomWidth, height));
 				nvgScissor(args.vg, 0, b.pos.y, width, height);
 				float invNbSample = 1.0f / nbSample;
-				size_t inc = std::max(vL.size()/zoomWidth/4,1.f);
+				size_t inc = std::max(nbSample/zoomWidth/4,1.f);
 				nvgBeginPath(args.vg);
-				for (size_t i = 0; i < vL.size(); i+=inc) {
+				for (size_t i = 0; i < nbSample; i+=inc) {
 					float x, y;
 					x = (float)i * invNbSample ;
-					y = (-1.f)*vL[i] * 0.5f + 0.5f;
+					y = (-1.f)*module->playBuffer[i].samples[0] * 0.5f + 0.5f;
 					Vec p;
 					p.x = b.pos.x + b.size.x * x;
 					p.y = b.pos.y + b.size.y * (1.0f - y);
@@ -659,16 +568,16 @@ struct CANARDDisplay : OpaqueWidget {
 
 				nvgLineCap(args.vg, NVG_MITER);
 				nvgStrokeWidth(args.vg, 1);
-				nvgGlobalCompositeOperation(args.vg, NVG_LIGHTER);
+				// nvgGlobalCompositeOperation(args.vg, NVG_LIGHTER);
 				nvgStroke(args.vg);
 
 				b = Rect(Vec(zoomLeftAnchor, height+10), Vec(zoomWidth, height));
 				nvgScissor(args.vg, 0, b.pos.y, width, height);
 				nvgBeginPath(args.vg);
-				for (size_t i = 0; i < vR.size(); i+=inc) {
+				for (size_t i = 0; i < nbSample; i+=inc) {
 					float x, y;
 					x = (float)i * invNbSample;
-					y = (-1.f)*vR[i] * 0.5f + 0.5f;
+					y = (-1.f)*module->playBuffer[i].samples[1] * 0.5f + 0.5f;
 					Vec p;
 					p.x = b.pos.x + b.size.x * x;
 					p.y = b.pos.y + b.size.y * (1.0f - y);
@@ -680,15 +589,85 @@ struct CANARDDisplay : OpaqueWidget {
 				}
 				nvgLineCap(args.vg, NVG_MITER);
 				nvgStrokeWidth(args.vg, 1);
-				nvgGlobalCompositeOperation(args.vg, NVG_LIGHTER);
+				// nvgGlobalCompositeOperation(args.vg, NVG_LIGHTER);
 				nvgStroke(args.vg);
 				nvgResetScissor(args.vg);
 			}
+			
+			module->mylock.unlock();			
+		}
+	}
+};
+
+struct CANARDDisplay2 : OpaqueWidget {
+	CANARD *module;
+	const float width = 175.0f;
+	const float height = 50.0f;
+	float zoomWidth = 175.0f;
+	float zoomLeftAnchor = 0.0f;
+	int refIdx = 0;
+	float refX = 0.0f;
+
+	CANARDDisplay2() {
+	}
+
+	void onMouseDown(const event::MouseDown &e) override {
+		if (module->slices.size()>0) {
+			refX = e.pos.x;
+			refIdx = ((e.pos.x - zoomLeftAnchor)/zoomWidth)*(float)module->totalSampleCount;
+			module->addSliceMarker = refIdx;
+			auto lower = std::lower_bound(module->slices.begin(), module->slices.end(), refIdx);
+			module->selected = distance(module->slices.begin(),lower-1);
+			module->deleteSliceMarker = *(lower-1);
+		}
+
+		if (e.button == 0)
+			OpaqueWidget::onMouseDown(e);		
+	}
+
+	void draw(const DrawArgs &args) override {
+		if (module && (module->playBuffer.size()>0)) {
+			size_t nbSample = module->totalSampleCount;
+
+			// Draw play line
+			if (!module->loading) {
+				nvgStrokeColor(args.vg, LIGHTBLUE_BIDOO);
+				{
+					nvgBeginPath(args.vg);
+					nvgStrokeWidth(args.vg, 2);
+					if (nbSample>0) {
+						nvgMoveTo(args.vg, module->samplePos * zoomWidth / nbSample + zoomLeftAnchor, 0);
+						nvgLineTo(args.vg, module->samplePos * zoomWidth / nbSample + zoomLeftAnchor, 2*height+10);
+					}
+					else {
+						nvgMoveTo(args.vg, 0, 0);
+						nvgLineTo(args.vg, 0, 2*height+10);
+					}
+					nvgClosePath(args.vg);
+				}
+				nvgStroke(args.vg);
+			}
+
+			if ((!module->loading) && (nbSample>0)) {
+				module->mylock.lock();
+				std::vector<int> s(module->slices);
+				module->mylock.unlock();
+
+				// Draw loop
+				nvgFillColor(args.vg, nvgRGBA(255, 255, 255, 60));
+				{
+					nvgBeginPath(args.vg);
+					nvgMoveTo(args.vg, (module->sampleStart + module->fadeLenght) * zoomWidth / nbSample + zoomLeftAnchor, 0);
+					nvgLineTo(args.vg, module->sampleStart * zoomWidth / nbSample + zoomLeftAnchor, 2*height+10);
+					nvgLineTo(args.vg, (module->sampleStart + module->loopLength) * zoomWidth / nbSample + zoomLeftAnchor, 2*height+10);
+					nvgLineTo(args.vg, (module->sampleStart + module->loopLength - module->fadeLenght) * zoomWidth / nbSample + zoomLeftAnchor, 0);
+					nvgLineTo(args.vg, (module->sampleStart + module->fadeLenght) * zoomWidth / nbSample + zoomLeftAnchor, 0);
+					nvgClosePath(args.vg);
+				}
+				nvgFill(args.vg);
 
 				//draw slices
-
-				if (floor(module->params[CANARD::MODE_PARAM].getValue()) == 1) {
-					nvgScissor(args.vg, 0, 0, width, 2*height+10);
+				if (module->params[CANARD::MODE_PARAM].getValue() == 1) {
 					for (size_t i = 0; i < s.size(); i++) {
 						if (s[i] != module->deleteSliceMarker) {
 							nvgStrokeColor(args.vg, YELLOW_BIDOO);
@@ -705,10 +684,20 @@ struct CANARDDisplay : OpaqueWidget {
 						}
 						nvgStroke(args.vg);
 					}
-					nvgResetScissor(args.vg);
 				}
 
-				nvgRestore(args.vg);
+				//draw selected
+				if ((module->selected >= 0) && ((size_t)module->selected < s.size()) && (floor(module->params[CANARD::MODE_PARAM].getValue()) == 1)) {
+					nvgBeginPath(args.vg);
+					nvgStrokeWidth(args.vg, 4);
+					nvgMoveTo(args.vg, (s[module->selected] * zoomWidth / nbSample) + zoomLeftAnchor , 2*height+8);
+					if ((size_t)module->selected < (s.size()-1))
+						nvgLineTo(args.vg, (s[module->selected+1] * zoomWidth / nbSample) + zoomLeftAnchor-0.5 , 2*height+8);
+					else
+						nvgLineTo(args.vg, zoomWidth + zoomLeftAnchor, 2*height+8);
+					nvgStrokeColor(args.vg, RED_BIDOO);
+					nvgStroke(args.vg);
+				}
 			}
 		}
 	}
@@ -727,6 +716,13 @@ struct CANARDWidget : ModuleWidget {
 
 		{
 			CANARDDisplay *display = new CANARDDisplay();
+			display->module = module;
+			display->box.pos = Vec(10, 35);
+			display->box.size = Vec(175, 110);
+			addChild(display);
+		}
+		{
+			CANARDDisplay2 *display = new CANARDDisplay2();
 			display->module = module;
 			display->box.pos = Vec(10, 35);
 			display->box.size = Vec(175, 110);

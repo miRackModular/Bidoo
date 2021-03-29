@@ -235,7 +235,6 @@ void PENEQUE::process(const ProcessArgs &args) {
 
 struct PENEQUEMagnDisplay : OpaqueWidget {
 	PENEQUE *module;
-	shared_ptr<Font> font;
 	const float width = 400.0f;
 	const float heightMagn = 70.0f;
 	const float heightPhas = 50.0f;
@@ -248,38 +247,39 @@ struct PENEQUEMagnDisplay : OpaqueWidget {
 	bool write = false;
 
 	PENEQUEMagnDisplay() {
-		font = APP->window->loadFont(asset::plugin(pluginInstance, "res/DejaVuSansMono.ttf"));
+		canSquash = true;
 	}
 
-	void onButton(const event::Button &e) override {
-		refX = e.pos.x;
-		refY = e.pos.y;
-		refIdx = ((e.pos.x - zoomLeftAnchor)/zoomWidth)*(float)BINS + 1;
-		OpaqueWidget::onButton(e);
-	}
-
-	void onDragStart(const event::DragStart &e) override {
-		appGet()->window->cursorLock();
-		OpaqueWidget::onDragStart(e);
+	void onMouseDown(const event::MouseDown &e) override {
+	  	if (e.button == 0)
+	  	{
+			refX = e.pos.x;
+			refY = e.pos.y;
+			refIdx = ((e.pos.x - zoomLeftAnchor)/zoomWidth)*(float)BINS + 1;
+		}
+		OpaqueWidget::onMouseDown(e);
 	}
 
 	void onDragMove(const event::DragMove &e) override {
-		if (!((appGet()->window->getMods() & RACK_MOD_MASK) == (GLFW_MOD_CONTROL))) {
+		bool ctrl = api0::windowIsShiftPressed();// ((appGet()->window->getMods() & RACK_MOD_MASK) == (GLFW_MOD_CONTROL));
+		if (!ctrl) {
 			if (refY<=heightMagn) {
-				if (((appGet()->window->getMods() & RACK_MOD_MASK) == (GLFW_MOD_CONTROL))) {
+				if (ctrl) {
 					module->magn[refIdx] = 0.0f;
 				}
 				else {
-					module->magn[refIdx] -= e.mouseDelta.y/10.0f;
+					float delta = e.mouseDelta.x - e.mouseDelta.y;
+					module->magn[refIdx] += delta/5.0f;
 					module->magn[refIdx] = clamp(module->magn[refIdx],0.0f, 100.0f);
 				}
 			}
 			else if (refY>=heightMagn+graphGap) {
-				if ((appGet()->window->getMods() & RACK_MOD_MASK) == (GLFW_MOD_CONTROL)) {
+				if (ctrl) {
 					module->phas[refIdx] = 0.0f;
 				}
 				else {
-					module->phas[refIdx] -= e.mouseDelta.y/10.0f;
+					float delta = e.mouseDelta.x - e.mouseDelta.y;
+					module->phas[refIdx] += delta/30.0f;
 					module->phas[refIdx] = clamp(module->phas[refIdx],-1.0f * M_PI, M_PI);
 				}
 			}
@@ -288,14 +288,18 @@ struct PENEQUEMagnDisplay : OpaqueWidget {
 		else {
 			zoomLeftAnchor = clamp(refX - (refX - zoomLeftAnchor) + e.mouseDelta.x, width - zoomWidth,0.0f);
 		}
+
+		// As it's squashed, this will also redraw the waveform display
+		dirty = true;
+
 		OpaqueWidget::onDragMove(e);
 	}
 
-	void onDragEnd(const event::DragEnd &e) override {
-		appGet()->window->cursorUnlock();
-		OpaqueWidget::onDragEnd(e);
-		//module->computeWavelet();
-	}
+	// void onDragEnd(const event::DragEnd &e) override {
+	// 	appGet()->window->cursorUnlock();
+	// 	OpaqueWidget::onDragEnd(e);
+	// 	//module->computeWavelet();
+	// }
 
 	void draw(NVGcontext *vg) override {
     if (module) {
@@ -349,7 +353,6 @@ struct PENEQUEMagnDisplay : OpaqueWidget {
 
 struct PENEQUEWavDisplay : OpaqueWidget {
 	PENEQUE *module;
-	shared_ptr<Font> font;
 	const float width = 200.0f;
 	const float height = 100.0f;
 	float zoomWidth = width;
@@ -358,36 +361,36 @@ struct PENEQUEWavDisplay : OpaqueWidget {
 	float refX = 0.0f;
 
 	PENEQUEWavDisplay() {
-		font = APP->window->loadFont(asset::plugin(pluginInstance, "res/DejaVuSansMono.ttf"));
 	}
 
-  void onButton(const event::Button &e) override {
-    refX = e.pos.x;
-    OpaqueWidget::onButton(e);
-  }
+  // void onMouseDown(const event::MouseDown &e) override {
+  // 	if (e.button == 0)
+	 //    refX = e.pos.x;
+  //   OpaqueWidget::onMouseDown(e);
+  // }
 
-  void onDragStart(const event::DragStart &e) override {
-    appGet()->window->cursorLock();
-    OpaqueWidget::onDragStart(e);
-  }
+  // void onDragStart(const event::DragStart &e) override {
+  //   appGet()->window->cursorLock();
+  //   OpaqueWidget::onDragStart(e);
+  // }
 
-  void onDragEnd(const event::DragEnd &e) override {
-    appGet()->window->cursorUnlock();
-    OpaqueWidget::onDragEnd(e);
-  }
+  // void onDragEnd(const event::DragEnd &e) override {
+  //   appGet()->window->cursorUnlock();
+  //   OpaqueWidget::onDragEnd(e);
+  // }
 
-	void onDragMove(const event::DragMove &e) override {
-		float zoom = 1.0f;
-		if (e.mouseDelta.y > 0.0f) {
-			zoom = 1.0f/(((appGet()->window->getMods() & RACK_MOD_MASK) == (GLFW_MOD_SHIFT)) ? 2.0f : 1.1f);
-		}
-		else if (e.mouseDelta.y < 0.0f) {
-			zoom = ((appGet()->window->getMods() & RACK_MOD_MASK) == (GLFW_MOD_SHIFT)) ? 2.0f : 1.1f;
-		}
-		zoomWidth = clamp(zoomWidth*zoom,width,zoomWidth*(((appGet()->window->getMods() & RACK_MOD_MASK) == (GLFW_MOD_SHIFT)) ? 2.0f : 1.1f));
-		zoomLeftAnchor = clamp(refX - (refX - zoomLeftAnchor)*zoom + e.mouseDelta.x, width - zoomWidth,0.0f);
-		OpaqueWidget::onDragMove(e);
-	}
+	// void onDragMove(const event::DragMove &e) override {
+	// 	float zoom = 1.0f;
+	// 	if (e.mouseDelta.y > 0.0f) {
+	// 		zoom = 1.0f/1.1;//(((appGet()->window->getMods() & RACK_MOD_MASK) == (GLFW_MOD_SHIFT)) ? 2.0f : 1.1f);
+	// 	}
+	// 	else if (e.mouseDelta.y < 0.0f) {
+	// 		zoom = 1.1;//((appGet()->window->getMods() & RACK_MOD_MASK) == (GLFW_MOD_SHIFT)) ? 2.0f : 1.1f;
+	// 	}
+	// 	zoomWidth = clamp(zoomWidth*zoom,width,zoomWidth*1.1);//(((appGet()->window->getMods() & RACK_MOD_MASK) == (GLFW_MOD_SHIFT)) ? 2.0f : 1.1f));
+	// 	zoomLeftAnchor = clamp(refX - (refX - zoomLeftAnchor)*zoom + e.mouseDelta.x, width - zoomWidth,0.0f);
+	// 	OpaqueWidget::onDragMove(e);
+	// }
 
 	void draw(const DrawArgs &args) override {
     if (module) {

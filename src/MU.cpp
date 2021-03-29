@@ -84,7 +84,7 @@ struct MU : Module {
 	bool trigStack = false;
 	bool mute = false;
 
-	MU() : Module() {
+	MU() {
 		config(NUM_PARAMS, NUM_INPUTS, NUM_OUTPUTS, NUM_LIGHTS);
 		configParam(BPM_PARAM, 0.0f, 800.0f, 117.0f);
 		configParam(BPMFINE_PARAM, 0.0f, 0.99f, 0.0f);
@@ -250,13 +250,22 @@ struct BidooBlueTrimpotWithDisplay : BidooBlueTrimpot {
 	const char *format = NULL;
 	const char *header = NULL;
 
-	void onHover(const event::Hover& e) override {
+	void onDragStart(const event::DragStart& e) override {
 		if (lblDisplay && valueForDisplay && format) {
 			lblDisplay->value = valueForDisplay;
 			lblDisplay->format = format;
 		}
 		if (lblDisplay && header) lblDisplay->header = header;
-		BidooBlueTrimpot::onHover(e);
+		BidooBlueTrimpot::onDragStart(e);
+	}
+
+	void onDragEnd(const event::DragEnd& e) override {
+		if (lblDisplay) {
+			lblDisplay->value = NULL;
+			lblDisplay->format = NULL;
+			lblDisplay->header = NULL;
+		}
+		BidooBlueTrimpot::onDragEnd(e);
 	}
 };
 
@@ -266,13 +275,42 @@ struct TinyPJ301MPortWithDisplay : TinyPJ301MPort {
 	const char *format = NULL;
 	const char *header = NULL;
 
-	void onHover(const event::Hover& e) override {
+	void onDragStart(const event::DragStart& e) override {
 		if (lblDisplay && valueForDisplay && format) {
 			lblDisplay->value = valueForDisplay;
 			lblDisplay->format = format;
 		}
 		if (lblDisplay && header) lblDisplay->header = header;
-		TinyPJ301MPort::onHover(e);
+		TinyPJ301MPort::onDragStart(e);
+	}
+
+	void onDragEnter(const event::DragEnter& e) override {
+		if (lblDisplay && valueForDisplay && format) {
+			lblDisplay->value = valueForDisplay;
+			lblDisplay->format = format;
+		}
+		if (lblDisplay && header) lblDisplay->header = header;
+		TinyPJ301MPort::onDragEnter(e);
+	}
+
+	void onDragEnd(const event::DragEnd& e) override {
+		if (lblDisplay) {
+			lblDisplay->value = NULL;
+			lblDisplay->format = NULL;
+			lblDisplay->header = NULL;
+		}
+		TinyPJ301MPort::onDragEnd(e);
+	}
+
+	void onDragLeave(const event::DragEnter& e) override {
+		if (api0::gDraggedWidget != this) {
+			if (lblDisplay) {
+				lblDisplay->value = NULL;
+				lblDisplay->format = NULL;
+				lblDisplay->header = NULL;
+			}
+		}
+		TinyPJ301MPort::onDragLeave(e);
 	}
 };
 
@@ -342,7 +380,7 @@ struct MUWidget : ModuleWidget {
 
 		BidooBlueTrimpotWithDisplay* cv =  createParam<BidooBlueTrimpotWithDisplay>(Vec(portX0[0]+14, portY0[2]+19), module, MU::CV_PARAM);
 		cv->lblDisplay = display;
-		cv->valueForDisplay = module ? &module->params[MU::CV_PARAM].value : NULL;
+		cv->valueForDisplay = module ? &module->params[MU::CV_PARAM].value.target : NULL;
 		cv->format = "%2.2f V";
 		cv->header = "CV";
 		addParam(cv);

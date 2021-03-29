@@ -12,7 +12,7 @@
 #include <iostream>
 #include <fstream>
 #include "dep/lodepng/lodepng.h"
-#include "dep/AudioFile/AudioFile.h"
+// #include "dep/AudioFile/AudioFile.h"
 
 using namespace std;
 
@@ -43,24 +43,24 @@ void tLoadSample(wtTable &table, std::string path, size_t frameLen, bool interpo
 			table.calcFFT();
 		}
 	}
-	else if (waveExtension == "aiff") {
-		float *sample;
-		AudioFile<float> audioFile;
-		if (audioFile.load(path.c_str()))  {
-			sample = (float*)calloc(audioFile.getNumSamplesPerChannel(),sizeof(float));
-			for (int i=0; i < audioFile.getNumSamplesPerChannel(); i++) {
-				if (audioFile.isMono()) {
-					sample[i] = audioFile.samples[0][i];
-				}
-				else {
-					sample[i] = 0.5f*(audioFile.samples[0][i]+audioFile.samples[1][i]);
-				}
-			}
-			table.loadSample(audioFile.getNumSamplesPerChannel(), frameLen, interpolate, sample);
-			free(sample);
-			table.calcFFT();
-		}
-	}
+	// else if (waveExtension == "aiff") {
+	// 	float *sample;
+	// 	AudioFile<float> audioFile;
+	// 	if (audioFile.load(path.c_str()))  {
+	// 		sample = (float*)calloc(audioFile.getNumSamplesPerChannel(),sizeof(float));
+	// 		for (int i=0; i < audioFile.getNumSamplesPerChannel(); i++) {
+	// 			if (audioFile.isMono()) {
+	// 				sample[i] = audioFile.samples[0][i];
+	// 			}
+	// 			else {
+	// 				sample[i] = 0.5f*(audioFile.samples[0][i]+audioFile.samples[1][i]);
+	// 			}
+	// 		}
+	// 		table.loadSample(audioFile.getNumSamplesPerChannel(), frameLen, interpolate, sample);
+	// 		free(sample);
+	// 		table.calcFFT();
+	// 	}
+	// }
 }
 
 void tLoadISample(wtTable &table, float *iRec, size_t sc, size_t frameLen, bool interpolate) {
@@ -109,27 +109,27 @@ void tLoadFrame(wtTable &table, std::string path, float index, bool interpolate)
 			table.calcFFT();
 		}
 	}
-	else if (waveExtension == "aiff") {
-		float *sample;
-			AudioFile<float> audioFile;
-			if (audioFile.load(path.c_str()))  {
-				sample = (float*)calloc(audioFile.getNumSamplesPerChannel(),sizeof(float));
-				for (int i=0; i < audioFile.getNumSamplesPerChannel(); i++) {
-					if (audioFile.isMono()) sample[i] = audioFile.samples[0][i];
-					else sample[i] = 0.5f*(audioFile.samples[0][i]+audioFile.samples[1][i]);
-				}
-				size_t i = index*(table.nFrames-1);
-				if (i<table.nFrames) {
-					table.frames[i].loadSample(audioFile.getNumSamplesPerChannel(), interpolate, sample);
-				}
-				else if (table.nFrames==0) {
-					table.addFrame(0);
-					table.frames[0].loadSample(audioFile.getNumSamplesPerChannel(), interpolate, sample);
-				}
-				free(sample);
-				table.calcFFT();
-			}
-	}
+	// else if (waveExtension == "aiff") {
+	// 	float *sample;
+	// 		AudioFile<float> audioFile;
+	// 		if (audioFile.load(path.c_str()))  {
+	// 			sample = (float*)calloc(audioFile.getNumSamplesPerChannel(),sizeof(float));
+	// 			for (int i=0; i < audioFile.getNumSamplesPerChannel(); i++) {
+	// 				if (audioFile.isMono()) sample[i] = audioFile.samples[0][i];
+	// 				else sample[i] = 0.5f*(audioFile.samples[0][i]+audioFile.samples[1][i]);
+	// 			}
+	// 			size_t i = index*(table.nFrames-1);
+	// 			if (i<table.nFrames) {
+	// 				table.frames[i].loadSample(audioFile.getNumSamplesPerChannel(), interpolate, sample);
+	// 			}
+	// 			else if (table.nFrames==0) {
+	// 				table.addFrame(0);
+	// 				table.frames[0].loadSample(audioFile.getNumSamplesPerChannel(), interpolate, sample);
+	// 			}
+	// 			free(sample);
+	// 			table.calcFFT();
+	// 		}
+	// }
 }
 
 void tLoadPNG(wtTable &table, std::string path) {
@@ -300,6 +300,7 @@ struct LIMONADE : Module {
 	};
 
 	std::string lastPath;
+	int sampleToken = 0;
 	size_t frameSize=FS;
 	int morphType = -1;
 	bool recWt = false;
@@ -518,6 +519,7 @@ void LIMONADE::loadSample() {
 		// t.detach();
 		free(path);
 		morphType = -1;
+		sampleToken++;
 	}
 }
 
@@ -527,6 +529,7 @@ void LIMONADE::loadFrame() {
 		lastPath=path;
 		tLoadFrame(table, path, params[INDEX_PARAM].getValue(), true);
 		free(path);
+		sampleToken++;
 	}
 }
 
@@ -536,6 +539,7 @@ void LIMONADE::loadPNG() {
 		lastPath=path;
 		tLoadPNG(table, path);
 		free(path);
+		sampleToken++;
 	}
 }
 
@@ -725,59 +729,59 @@ struct LIMONADEBinsDisplay : OpaqueWidget {
 		font = APP->window->loadFont(asset::plugin(pluginInstance, "res/DejaVuSansMono.ttf"));
 	}
 
-	void onButton(const event::Button &e) override {
-		refX = e.pos.x;
-		refY = e.pos.y;
-		refIdx = ((e.pos.x - zoomLeftAnchor)/zoomWidth)*(float)FS2;
-		if (refY<(heightMagn + heightPhas + graphGap)) {
-			scroll = false;
-		}
-		else {
-			if ((refX>scrollLeftAnchor) && (refX<scrollLeftAnchor+20)) scroll = true;
-		}
-		OpaqueWidget::onButton(e);
-	}
+	// void onButton(const event::Button &e) override {
+	// 	refX = e.pos.x;
+	// 	refY = e.pos.y;
+	// 	refIdx = ((e.pos.x - zoomLeftAnchor)/zoomWidth)*(float)FS2;
+	// 	if (refY<(heightMagn + heightPhas + graphGap)) {
+	// 		scroll = false;
+	// 	}
+	// 	else {
+	// 		if ((refX>scrollLeftAnchor) && (refX<scrollLeftAnchor+20)) scroll = true;
+	// 	}
+	// 	OpaqueWidget::onButton(e);
+	// }
 
-  void onDragStart(const event::DragStart &e) override {
-		appGet()->window->cursorLock();
-		OpaqueWidget::onDragStart(e);
-	}
+ //  void onDragStart(const event::DragStart &e) override {
+	// 	appGet()->window->cursorLock();
+	// 	OpaqueWidget::onDragStart(e);
+	// }
 
-	void onDragMove(const event::DragMove &e) override {
-		if ((!scroll) && (module->table.nFrames>0)) {
-			size_t i = module->params[LIMONADE::INDEX_PARAM].getValue()*(module->table.nFrames-1);
-			if (refY<=heightMagn) {
-				if ((appGet()->window->getMods() & RACK_MOD_MASK) == (GLFW_MOD_CONTROL)) {
-					module->table.frames[i].magnitude[refIdx] = 0.0f;
-				}
-				else {
-					module->table.frames[i].magnitude[refIdx] -= e.mouseDelta.y/(250/appGet()->scene->rackScroll->zoomWidget->zoom);
-					module->table.frames[i].magnitude[refIdx] = clamp(module->table.frames[i].magnitude[refIdx],0.0f, 1.0f);
-				}
-			}
-			else if (refY>=heightMagn+graphGap) {
-				if ((appGet()->window->getMods() & RACK_MOD_MASK) == (GLFW_MOD_CONTROL)) {
-					module->table.frames[i].phase[refIdx] = 0.0f;
-				}
-				else {
-					module->table.frames[i].phase[refIdx] -= e.mouseDelta.y / (250 / appGet()->scene->rackScroll->zoomWidget->zoom);
-					module->table.frames[i].phase[refIdx] = clamp(module->table.frames[i].phase[refIdx],-1.0f*M_PI, M_PI);
-				}
-			}
-			module->table.frames[i].morphed = false;
-			module->updateWaveTable();
-		}
-		else {
-				scrollLeftAnchor = clamp(scrollLeftAnchor + e.mouseDelta.x / appGet()->scene->rackScroll->zoomWidget->zoom, 0.0f,width-20.0f);
-				zoomLeftAnchor = rescale(scrollLeftAnchor, 0.0f, width-20.0f, 0.0f, (width - zoomWidth)/2.f);
-		}
-		OpaqueWidget::onDragMove(e);
-	}
+	// void onDragMove(const event::DragMove &e) override {
+	// 	if ((!scroll) && (module->table.nFrames>0)) {
+	// 		size_t i = module->params[LIMONADE::INDEX_PARAM].getValue()*(module->table.nFrames-1);
+	// 		if (refY<=heightMagn) {
+	// 			if ((appGet()->window->getMods() & RACK_MOD_MASK) == (GLFW_MOD_CONTROL)) {
+	// 				module->table.frames[i].magnitude[refIdx] = 0.0f;
+	// 			}
+	// 			else {
+	// 				module->table.frames[i].magnitude[refIdx] -= e.mouseDelta.y/(250/appGet()->scene->rackScroll->zoomWidget->zoom);
+	// 				module->table.frames[i].magnitude[refIdx] = clamp(module->table.frames[i].magnitude[refIdx],0.0f, 1.0f);
+	// 			}
+	// 		}
+	// 		else if (refY>=heightMagn+graphGap) {
+	// 			if ((appGet()->window->getMods() & RACK_MOD_MASK) == (GLFW_MOD_CONTROL)) {
+	// 				module->table.frames[i].phase[refIdx] = 0.0f;
+	// 			}
+	// 			else {
+	// 				module->table.frames[i].phase[refIdx] -= e.mouseDelta.y / (250 / appGet()->scene->rackScroll->zoomWidget->zoom);
+	// 				module->table.frames[i].phase[refIdx] = clamp(module->table.frames[i].phase[refIdx],-1.0f*M_PI, M_PI);
+	// 			}
+	// 		}
+	// 		module->table.frames[i].morphed = false;
+	// 		module->updateWaveTable();
+	// 	}
+	// 	else {
+	// 			scrollLeftAnchor = clamp(scrollLeftAnchor + e.mouseDelta.x / appGet()->scene->rackScroll->zoomWidget->zoom, 0.0f,width-20.0f);
+	// 			zoomLeftAnchor = rescale(scrollLeftAnchor, 0.0f, width-20.0f, 0.0f, (width - zoomWidth)/2.f);
+	// 	}
+	// 	OpaqueWidget::onDragMove(e);
+	// }
 
-  void onDragEnd(const event::DragEnd &e) override {
-    appGet()->window->cursorUnlock();
-    OpaqueWidget::onDragEnd(e);
-  }
+ //  void onDragEnd(const event::DragEnd &e) override {
+ //    appGet()->window->cursorUnlock();
+ //    OpaqueWidget::onDragEnd(e);
+ //  }
 
 	void draw(const DrawArgs &args) override {
     if (module) {
@@ -868,7 +872,7 @@ struct LIMONADEBinsDisplay : OpaqueWidget {
 				}
 				nvgLineCap(args.vg, NVG_MITER);
 				nvgStrokeWidth(args.vg, 1);
-				nvgGlobalCompositeOperation(args.vg, NVG_LIGHTER);
+				// nvgGlobalCompositeOperation(args.vg, NVG_LIGHTER);
 				nvgStroke(args.vg);
 				nvgRestore(args.vg);
 			}
@@ -891,7 +895,7 @@ struct LIMONADEBinsDisplay : OpaqueWidget {
 				}
 				nvgLineCap(args.vg, NVG_MITER);
 				nvgStrokeWidth(args.vg, 1);
-				nvgGlobalCompositeOperation(args.vg, NVG_LIGHTER);
+				// nvgGlobalCompositeOperation(args.vg, NVG_LIGHTER);
 				nvgStroke(args.vg);
 				nvgRestore(args.vg);
 			}
@@ -901,7 +905,7 @@ struct LIMONADEBinsDisplay : OpaqueWidget {
 
 struct LIMONADEWavDisplay : OpaqueWidget {
 	LIMONADE *module;
-	shared_ptr<Font> font;
+	// shared_ptr<Font> font;
 	const float width = 130.0f;
 	const float height = 130.0f;
 	int refIdx = 0;
@@ -916,39 +920,49 @@ struct LIMONADEWavDisplay : OpaqueWidget {
 	float x3D, y3D, z3D, x2D, y2D;
 
 	LIMONADEWavDisplay() {
-		font = APP->window->loadFont(asset::plugin(pluginInstance, "res/DejaVuSansMono.ttf"));
+		// font = APP->window->loadFont(asset::plugin(pluginInstance, "res/DejaVuSansMono.ttf"));
+		// canCache = true;
 	}
 
-	void onButton(const event::Button &e) override {
-			OpaqueWidget::onButton(e);
-	}
+	// void onButton(const event::Button &e) override {
+	// 		OpaqueWidget::onButton(e);
+	// }
 
-	void onDragStart(const event::DragStart &e) override {
-		appGet()->window->cursorLock();
-		OpaqueWidget::onDragStart(e);
-	}
+	// void onDragStart(const event::DragStart &e) override {
+	// 	appGet()->window->cursorLock();
+	// 	OpaqueWidget::onDragStart(e);
+	// }
 
-	void onDragMove(const event::DragMove &e) override {
-		alpha1+=e.mouseDelta.y;
-		alpha2-=e.mouseDelta.x;
-		if (alpha1>90) alpha1=90;
-		if (alpha1<-90) alpha1=-90;
-		if (alpha2>360) alpha2-=360;
-		if (alpha2<0) alpha2+=360;
+	// void onDragMove(const event::DragMove &e) override {
+	// 	alpha1+=e.mouseDelta.y;
+	// 	alpha2-=e.mouseDelta.x;
+	// 	if (alpha1>90) alpha1=90;
+	// 	if (alpha1<-90) alpha1=-90;
+	// 	if (alpha2>360) alpha2-=360;
+	// 	if (alpha2<0) alpha2+=360;
 
-		a1 = alpha1 * M_PI/180.0f;
-		a2 = alpha2 * M_PI/180.0f;
-		ca1 = cos(a1);
-		sa1 = sin(a1);
-		ca2 = cos(a2);
-		sa2 = sin(a2);
-		OpaqueWidget::onDragMove(e);
-	}
+	// 	a1 = alpha1 * M_PI/180.0f;
+	// 	a2 = alpha2 * M_PI/180.0f;
+	// 	ca1 = cos(a1);
+	// 	sa1 = sin(a1);
+	// 	ca2 = cos(a2);
+	// 	sa2 = sin(a2);
+	// 	OpaqueWidget::onDragMove(e);
+	// }
 
-	void onDragEnd(const event::DragEnd &e) override {
-		appGet()->window->cursorUnlock();
-		OpaqueWidget::onDragEnd(e);
-	}
+	// void onDragEnd(const event::DragEnd &e) override {
+	// 	appGet()->window->cursorUnlock();
+	// 	OpaqueWidget::onDragEnd(e);
+	// }
+
+	// int sampleToken = -1;
+	// void step() override {
+	// 	if (sampleToken != module->sampleToken)
+	// 	{
+	// 		sampleToken = module->sampleToken;
+	// 		dirty = true;
+	// 	}
+	// }
 
 	void draw(const DrawArgs &args) override {
     if (module && (module->displayMode == 0)) {
@@ -1052,8 +1066,8 @@ struct LIMONADETextField : LedDisplayTextField {
 	void onChange(const event::Change &e) override {
 		LedDisplayTextField::onChange(e);
 		if ((text.size() > 0) && (text != "")) {
-			size_t val;
-			std::istringstream(text)>>val;
+			size_t val = atol(text.c_str());
+			// std::istringstream(text)>>val;
 	    module->frameSize = val;
 		}
 	};
@@ -1091,23 +1105,23 @@ struct moduleDisplayPlayedFrameItem : MenuItem {
 };
 
 struct LimonadeBlueBtnLoadSample : BlueBtn {
-	virtual void onButton(const event::Button &e) override {
-		if ((e.button == GLFW_MOUSE_BUTTON_LEFT) && (e.action == GLFW_PRESS)) dynamic_cast<LIMONADE*>(this->paramQuantity->module)->loadSample();
-		BlueBtn::onButton(e);
+	virtual void onDragStart(const event::DragStart &e) override {
+		dynamic_cast<LIMONADE*>(this->module)->loadSample();
+		BlueBtn::onDragStart(e);
 	}
 };
 
 struct LimonadeBlueBtnLoadPNG : BlueBtn {
-	virtual void onButton(const event::Button &e) override {
-		if ((e.button == GLFW_MOUSE_BUTTON_LEFT) && (e.action == GLFW_PRESS)) dynamic_cast<LIMONADE*>(this->paramQuantity->module)->loadPNG();
-		BlueBtn::onButton(e);
+	virtual void onDragStart(const event::DragStart &e) override {
+		dynamic_cast<LIMONADE*>(this->module)->loadPNG();
+		BlueBtn::onDragStart(e);
 	}
 };
 
 struct LimonadeBlueBtnLoadFrame : BlueBtn {
-	virtual void onButton(const event::Button &e) override {
-		if ((e.button == GLFW_MOUSE_BUTTON_LEFT) && (e.action == GLFW_PRESS)) dynamic_cast<LIMONADE*>(this->paramQuantity->module)->loadFrame();
-		BlueBtn::onButton(e);
+	virtual void onDragStart(const event::DragStart &e) override {
+		dynamic_cast<LIMONADE*>(this->module)->loadFrame();
+		BlueBtn::onDragStart(e);
 	}
 };
 

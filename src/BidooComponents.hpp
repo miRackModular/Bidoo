@@ -3,7 +3,6 @@
 #include "random.hpp"
 #include <vector>
 #include <jansson.h>
-#include "widget/Widget.hpp"
 #include <iostream>
 
 using namespace std;
@@ -208,19 +207,6 @@ struct BidooColoredKnob : RoundKnob {
 		setSvg(APP->window->loadSvg(asset::plugin(pluginInstance,"res/ComponentLibrary/ColoredKnobBidoo.svg")));
 		shadow->opacity = 0.0f;
 	}
-
-	void step() override {
-		if (paramQuantity) {
-			for (NSVGshape *shape = this->sw->svg->handle->shapes; shape != NULL; shape = shape->next) {
-				std::string str(shape->id);
-				if (str == "bidooKnob") {
-					shape->fill.color = (((unsigned int)42+(unsigned int)paramQuantity->getValue()*21) | (((unsigned int)87-(unsigned int)paramQuantity->getValue()*8) << 8) | (((unsigned int)117-(unsigned int)paramQuantity->getValue()) << 16));
-					shape->fill.color |= (unsigned int)(255) << 24;
-				}
-			}
-		}
-		RoundKnob::step();
-	}
 };
 
 struct BidooMorphKnob : RoundKnob {
@@ -237,23 +223,7 @@ struct BidooColoredTrimpot : RoundKnob {
 		minAngle = -0.75f*M_PI;
 		maxAngle = 0.75f*M_PI;
 		setSvg(APP->window->loadSvg(asset::plugin(pluginInstance,"res/ComponentLibrary/TrimpotBidoo.svg")));
-		if (this->sw && this->sw->svg && this->sw->svg->handle && this->sw->svg->handle->shapes) {
-			for (NSVGshape *shape = this->sw->svg->handle->shapes; shape != NULL; shape = shape->next) {
-				std::string str(shape->id);
-				if (str == "bidooTrimPot") {
-					tShape = shape;
-				}
-			}
-		}
 		shadow->opacity = 0.0f;
-	}
-
-	void step() override {
-		if (paramQuantity && tShape) {
-			tShape->fill.color = int(42+paramQuantity->getValue() * 210) | int(87-paramQuantity->getValue() * 80) << 8 | int(117-paramQuantity->getValue()*10) << 16;
-			tShape->fill.color |= 255 << 24;
-		}
-		RoundKnob::step();
 	}
 };
 
@@ -265,27 +235,7 @@ struct BidooziNCColoredKnob : RoundKnob {
 	BidooziNCColoredKnob() {
 		setSvg(APP->window->loadSvg(asset::plugin(pluginInstance,"res/ComponentLibrary/BlueKnobBidoo.svg")));
 		box.size = Vec(28, 28);
-		if (this->sw && this->sw->svg && this->sw->svg->handle && this->sw->svg->handle->shapes) {
-			for (NSVGshape *shape = this->sw->svg->handle->shapes; shape != NULL; shape = shape->next) {
-				std::string str(shape->id);
-				if (str == "bidooBlueKnob") {
-					tShape = shape;
-				}
-			}
-		}
 		shadow->opacity = 0.0f;
-	}
-
-	void step() override {
-		if (paramQuantity) {
-			corrCoef = rescale(clamp(*coeff,0.f,2.f),0.f,2.f,0.f,255.f);
-		}
-
-		if (tShape) {
-			tShape->fill.color = (((unsigned int)clamp(42.f+corrCoef,0.f,255.f)) | ((unsigned int)clamp(87.f-corrCoef,0.f,255.f) << 8) | ((unsigned int)clamp(117.f-corrCoef,0.f,255.f) << 16));
-			tShape->fill.color |= (unsigned int)(255) << 24;
-		}
-		RoundKnob::step();
 	}
 };
 
@@ -360,8 +310,6 @@ struct TinyPJ301MPort : app::SvgPort {
 		// background->svg = APP->window->loadSvg(asset::system("res/ComponentLibrary/TinyPJ301M.svg"));
 		// background->wrap();
 		setSvg(APP->window->loadSvg(asset::plugin(pluginInstance,"res/ComponentLibrary/TinyPJ301M.svg")));
-		sw->wrap();
-		box.size = sw->box.size;
 		shadow->opacity = 0.0f;
 	}
 };

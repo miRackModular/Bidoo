@@ -13,13 +13,11 @@ struct FfftAnalysis {
 	float *gInFIFO;
 	float *gFFTworksp;
 	float *gFFTworkspOut;
-	float *gLastPhase;
-	float *gAnaFreq;
 	float *gAnaMagn;
 	float sampleRate;
 	PFFFT_Setup *pffftSetup;
 	long gRover = false;
-	double magn, phase, tmp, window, real, imag;
+	double magn, window, real, imag;
 	double freqPerBin, expct, invOsamp, invFftFrameSize, invFftFrameSize2, invPi;
 	long fftFrameSize, osamp, i,k, qpd, index, inFifoLatency, stepSize, fftFrameSize2;
 
@@ -41,16 +39,12 @@ struct FfftAnalysis {
 		gInFIFO = (float*)calloc(fftFrameSize,sizeof(float));
 		gFFTworksp = (float*)pffft_aligned_malloc(fftFrameSize*sizeof(float));
 		gFFTworkspOut =  (float*)pffft_aligned_malloc(fftFrameSize*sizeof(float));
-		gLastPhase = (float*)calloc((fftFrameSize/2+1),sizeof(float));
-		gAnaFreq = (float*)calloc(fftFrameSize,sizeof(float));
 		gAnaMagn = (float*)calloc(fftFrameSize,sizeof(float));
 	}
 
 	~FfftAnalysis() {
 		pffft_destroy_setup(pffftSetup);
 		free(gInFIFO);
-		free(gLastPhase);
-		free(gAnaFreq);
 		free(gAnaMagn);
 		pffft_aligned_free(gFFTworksp);
 		pffft_aligned_free(gFFTworkspOut);
@@ -90,30 +84,9 @@ struct FfftAnalysis {
 
 						/* compute magnitude and phase */
 						magn = 2.*sqrt(real*real + imag*imag);
-						phase = atan2(imag,real);
-
-						/* compute phase difference */
-						tmp = phase - gLastPhase[k];
-						gLastPhase[k] = phase;
-
-						/* subtract expected phase difference */
-						tmp -= (double)k*expct;
-
-						/* map delta phase into +/- Pi interval */
-						qpd = tmp * invPi;
-						if (qpd >= 0) qpd += qpd&1;
-						else qpd -= qpd&1;
-						tmp -= M_PI*(double)qpd;
-
-						/* get deviation from bin frequency from the +/- Pi interval */
-						tmp = osamp * tmp * invPi * 0.5f;
-
-						/* compute the k-th partials' true frequency */
-						tmp = (double)k*freqPerBin + tmp*freqPerBin;
 
 						/* store magnitude and true frequency in analysis arrays */
 						gAnaMagn[k] = magn;
-						gAnaFreq[k] = tmp;
 					}
 
 					std::vector<float> v(gAnaMagn, gAnaMagn + fftFrameSize2);

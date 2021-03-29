@@ -1,5 +1,4 @@
 #include "waves.hpp"
-#include "AudioFile/AudioFile.h"
 #define DR_WAV_IMPLEMENTATION
 #include "dr_wav/dr_wav.h"
 #include <dsp/resampler.hpp>
@@ -31,24 +30,6 @@ namespace waves {
         }
         sampleCount = sc/c;
         drwav_free(pSampleData);
-      }
-    }
-    else if (waveExtension == "aiff") {
-      AudioFile<float> audioFile;
-      if (audioFile.load (path.c_str()))  {
-        sampleChannels = audioFile.getNumChannels();
-        sampleRate = audioFile.getSampleRate();
-        sampleCount = audioFile.getNumSamplesPerChannel();
-        for (int i=0; i < sampleCount; i++) {
-          rack::dsp::Frame<1> frame;
-          if (sampleChannels == 2) {
-            frame.samples[0] = (audioFile.samples[0][i] + audioFile.samples[1][i])/2.0f;
-          }
-          else {
-            frame.samples[0] = audioFile.samples[0][i];
-          }
-          result.push_back(frame);
-        }
       }
     }
 
@@ -94,23 +75,6 @@ namespace waves {
         }
         sampleCount = sc/c;
         drwav_free(pSampleData);
-      }
-    }
-    else if (waveExtension == "aiff") {
-      AudioFile<float> audioFile;
-      if (audioFile.load (path.c_str()))  {
-        sampleChannels = audioFile.getNumChannels();
-        sampleRate = audioFile.getSampleRate();
-        sampleCount = audioFile.getNumSamplesPerChannel();
-        for (int i=0; i < sampleCount; i++) {
-          rack::dsp::Frame<2> frame;
-          frame.samples[0] = audioFile.samples[0][i];
-  				if (sampleChannels == 2)
-  					frame.samples[1] = audioFile.samples[1][i];
-  				else
-  					frame.samples[1] = audioFile.samples[0][i];
-          result.push_back(frame);
-        }
       }
     }
 

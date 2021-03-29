@@ -8,7 +8,7 @@ void init(rack::Plugin *p) {
 
 	p->addModel(modelTOCANTE);
 	p->addModel(modelLATE);
-	p->addModel(modelDIKTAT);
+	// p->addModel(modelDIKTAT); //poly
 	p->addModel(modelDTROY);
 	p->addModel(modelBORDL);
 	p->addModel(modelZOUMAI);
@@ -21,20 +21,20 @@ void init(rack::Plugin *p) {
 	p->addModel(modelMOIRE);
 	p->addModel(modelHUITRE);
 	p->addModel(modelOUAIVE);
-	p->addModel(modelPOUPRE);
-	p->addModel(modelMAGMA);
-	p->addModel(modelOAI);
+	// p->addModel(modelPOUPRE); //poly
+	// p->addModel(modelMAGMA); //poly
+	// p->addModel(modelOAI); //poly
 	p->addModel(modelCANARD);
 	p->addModel(modelEMILE);
 	p->addModel(modelFORK);
 	p->addModel(modelTIARE);
 	p->addModel(modelCLACOS);
-	p->addModel(modelANTN);
+	// p->addModel(modelANTN); //libcurl
 	p->addModel(modelPENEQUE);
-	p->addModel(modelLIMONADE);
+	// p->addModel(modelLIMONADE); //needs rendering optimisations
 	p->addModel(modelLIMBO);
 	p->addModel(modelPERCO);
-	p->addModel(modelBAFIS);
+	// p->addModel(modelBAFIS);
 	p->addModel(modelFFILTR);
 	p->addModel(modelBAR);
 	p->addModel(modelMINIBAR);
@@ -42,11 +42,11 @@ void init(rack::Plugin *p) {
 	p->addModel(modelFREIN);
 	p->addModel(modelHCTIP);
 	p->addModel(modelCURT);
-	p->addModel(modelDFUZE);
+	// p->addModel(modelDFUZE); //GPL
 	p->addModel(modelREI);
 	p->addModel(modelRABBIT);
 	p->addModel(modelBISTROT);
 	p->addModel(modelSIGMA);
-	p->addModel(modelGARCON);
+	// p->addModel(modelGARCON); //needs processing and rendering optimisations
 	p->addModel(modelVOID);
 }

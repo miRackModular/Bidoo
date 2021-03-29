@@ -392,6 +392,7 @@ void draw(NVGcontext *vg) override {
 	nvgFillColor(vg, nvgRGBA(255, 255, 255, 255));
 	nvgStrokeColor(vg, nvgRGBA(255, 255, 255, 255));
 	nvgBeginPath(vg);
+	nvgAllowMergeSubpaths(vg);
 	nvgMoveTo(vg, width+spacer+5.0f, threshold);
 	nvgLineTo(vg, 3.0f*width+2.0f*spacer-5.0f, threshold);
 	{

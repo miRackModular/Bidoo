@@ -72,7 +72,7 @@ void HUITRE::process(const ProcessArgs &args) {
 
 	if ((syncTrigger.process(inputs[MEASURE_INPUT].getVoltage())) && (currentPattern != nextPattern)) {
 		currentPattern = nextPattern;
-		gatePulse.trigger(1e-3f);
+		gatePulse.trigger();
 	}
 	pulse = gatePulse.process(args.sampleTime);
 
