@@ -390,6 +390,7 @@ struct BORDL : Module {
 	bool gateOn = false;
 	const float invLightLambda = 3.333333333333333333333f;
 	bool copyState = false;
+	bool currentStepValid = false;	
 
 	PatternExtended patterns[16];
 
@@ -929,6 +930,8 @@ void BORDL::process(const ProcessArgs &args) {
 			lights[SLIDES_LIGHTS + i].setBrightness(slideState[i] == 't' ? 1.0f - v : v);
 			lights[SKIPS_LIGHTS + i].setBrightness(skipState[i] == 't' ? 1.0f - v : v);
 		}
+
+		currentStepValid = true;
 	}
 
 	// Lights & steps outputs
@@ -939,7 +942,7 @@ void BORDL::process(const ProcessArgs &args) {
 	lights[COPY_LIGHT].setBrightness(copyPattern >= 0 ? 1 : 0);
 
 	// Caclulate Outputs
-	gateOn = running && (!patterns[playedPattern].CurrentStep().skip);
+	gateOn = running && currentStepValid && (!patterns[playedPattern].CurrentStep().skip);
 	float gateValue = 0.0f;
 	if (gateOn){
 		if (patterns[playedPattern].CurrentStep().type == 0) {
